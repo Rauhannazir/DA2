@@ -1,0 +1,156 @@
+---
+output: 
+  pdf_document:
+    extra_dependencies: ["float"]
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+# Loading the data
+
+#install.packages("huxtable")
+#install.packages("dplyr")
+#install.packages("tidyverse")
+#install.packages("fixest")
+#install.packages("modelsummary")
+
+
+library(dplyr)
+library(tidyverse)
+library(fixest)
+library(modelsummary)
+library(huxtable)
+
+data <- read_csv("https://osf.io/4ay9x/download")
+```
+
+### DA2 - Assignment 1
+## Rauhan Nazir & Ali Hasnain Khan Sial
+
+### Introduction
+This assignment has tried to find the gender wage gap in the *Chief Executives* occupation in the U.S. for 2014 based on the data set taken from the **[OSF]("https://osf.io/4ay9x/")** website.
+
+### Data Manipulation
+
+There were several filters applied to the dataset to make it suitable for our analysis. The first one being the occupation that we wanted to focus on (Chief Executives). The second one was choosing only those workers who earn a weekly wage of more than 0 and have at least worked for 20 hours per week. Finally, only the workers who were between 17 and 64 were included in the final dataset used for carrying out analysis.
+
+We included a variable which showed the wage per hour of the employees that was calculated by dividing the weekly wage by the number of hours worked. A dummy variable for female in gender was also introduced that takes a value of 1 & 0 depending on the gender (1 when female), so that gender wise analyis can be performed. 
+
+Only the education levels of Associate Degree(occupational/vocational) and above have been included in the final dataset, with the Associate Degree(occupational/vocational) being the base for all the comparisons drawn. For both parametric and non-parametric regressions there are In total 6 education levels with a dummy variable created for each one, allowing us to get a detailed representation and insights for each education level. 
+
+### Analysis
+
+To get the unconditional gender wage gap, two methods were used which gave the same results. The first one being a data summary for wage per hour and female variable. The second one was an unconditional regression on wage and female. Both showed that on average, a female Chief Executive earns $4.2 less than her male counterpart.
+
+There was a decision that we had to make, whether to use the log of wage per hour or just use the absolute values before we run regressions. By creating density curves for both of the scenarios, we clearly saw that the distribution of the absolute values resembled more of a normal distribution compared to the log values, hence we decided to go with the absolute values to perform all the regression analysis.
+
+We have run 3 level-level regressions in total, accounting for heteroskedastic errors. Regression 1 gives us the unconditional gender gap; on average, a female Chief Executive earns USD 4.2 less than her male counterpart and this coefficient is significant with more than 99.9% confidence. Whereas, when conditioned on education, regression 2 shows that females earned USD 3.7 less than their male counterparts with the coefficient being significant at more than 99% confidence level. Regression 3, which was run with interactions terms of education levels and female,shows that while controlling for education, on average a female will earn approximately USD 15.8 less than her male counter part with the coefficient being significant at more than 99% confidence, but the difference as per the interaction term will also be added to this coefficient. For instance when a female moves from Associate Degree(occupational/vocational) to a PHD degree, on average a positive $22 will be added to her wage, which is significant at a 90% confidence level (Just the education level change effect due to being a female).
+
+In terms of generalizing the results, we shouldn't be so confident. And we say this due to a couple of reasons. The first one being that not all of the coefficients of interactions terms are significant and even those which are significant are only at 90% confidence level. The second reason is that there are not enough observations in the data set to allow us to confidently say that they are representative of the entire population.
+
+## Appendix
+
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
+#tried different occupations but at the end went with 0010- Chief Executives because had enough observations to make meaningful comparisons 
+#Using the occupational code 0010 - Chief executives
+df <- data %>% filter(occ2012 == 0010 & uhours>=20 & earnwke>0 & age >= 17 & age<=64)
+df <- df %>% filter(grade92 <= 46 & grade92 >= 41)
+
+#to check the distribution according to grade level
+ggplot(data=df,aes(x=grade92,y=earnwke))+geom_point() + theme_dark()
+# Creating the wage/hour (wagehour) variable for comparison across different observations
+df <- mutate(df, wagehour = earnwke/uhours)
+df <- mutate(df, female=as.numeric(sex==2))
+
+```
+
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
+
+# creating the log of wage per hour variable
+
+df <- df %>% mutate(logw = log ( wagehour ))
+datasummary(as.factor(female)*wagehour ~ Mean + SD + Min + Max + P25 + P75 + N , data = df)
+reg0 <- feols(wagehour ~ female, data = df , vcov="hetero")
+
+
+```
+
+```{r,echo=FALSE, include=FALSE, fig.width= 5, fig.height= 5 }
+
+# plotting the distribution of wage per hour and log of wage per hour to see if we should run regression with the log of wage/hour or the absolute value of wage/hour.
+ggplot(data = df, aes(x=wagehour))+
+  geom_density()+
+  xlab("log (wage/hour)")
+ggplot(data = df, aes(x=logw))+
+  geom_density()+
+  xlab("log (wage/hour)")
+# Since the distribution of wage per hour is closer to a normal distribution compared to log of wage per hour it makes more sense to use the absolute values rather than the log.
+
+
+```
+
+
+## Assigning degree names to grade92 variable based on the information provided on page 25 of the **[cpsx](https://osf.io/uqe8z/)** document provided.
+- ed_AD_V contains the individuals with education levels of associate degrees (Vocational/occupational)
+- ed_AD_AP contains the individuals with education levels of associate degrees (Academic program)
+- ed_BD contains the individuals with education levels of a Bachelor's degree (e.g.BA,AB,BS)
+- ed_MD contains the individuals with education levels of a Masters degree(e.g.MA,MS,MEng,Med,MSW,MBA)
+- ed_Profess contains the individuals with education of a professional degree (e.g.MD,DDS,DVM,LLB,JD)
+- ed_PhD contains the individuals with education levels of a Doctorate degree (e.g.PhD,EdD)
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+
+# Assigning values to grade92 based on the above information 
+df <- df %>% mutate(ed_AD_V=as.numeric(grade92==41),
+                    ed_AD_AP=as.numeric(grade92==42),
+                    ed_BD=as.numeric(grade92==43),
+                    ed_MD=as.numeric(grade92==44),
+                    ed_Profess = as.numeric(grade92==45),
+                    ed_PhD = as.numeric(grade92==46))
+```
+
+
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE, fig.width=8, fig.height=5}
+
+# Running a non-parametric regression of wagehour on education levels
+ggplot(data = df, aes(x = grade92, y = wagehour )) +
+  geom_smooth( color = "blue", method = "loess", formula = " y ~ x") +
+  geom_point()+
+  labs(title = "Non-parametric regression - wage per hour ~ education")+
+  scale_x_continuous( expand=c(0.1, 0.1),  breaks=seq(41, 46,   by=1), 
+                      labels = c("ed_AD_V","ed_AD_AP","ed_BD","ed_MD","ed_Profess","ed_PhD"))+
+  theme_dark()
+
+
+# Running a level-level regression between wage hour and female
+reg1 <- feols(wagehour ~ female, data = df , vcov="hetero")
+
+# reg1 1 shows that on average, the female earns approximately $4.3 less than her male counterpart
+
+# Running a level-level regression between wagehour and female with a moderating variable of education
+reg2 <- feols(wagehour ~ female + ed_AD_AP + ed_BD + ed_MD + ed_Profess + ed_PhD, data = df, vcov = "hetero")
+
+# reg2 shows that after controlling for the education levels, on average a female earns approximately $3.8 less than her male counterpart.
+
+
+# Running a level-level regression between wagehour and female with a moderating variable of education and including interaction terms to control for education levels of both genders.
+reg3 <- feols(wagehour ~ female + ed_AD_AP + ed_BD + ed_MD + ed_Profess + ed_PhD + female*ed_AD_AP + female*ed_BD + female*ed_MD +female*ed_Profess + female*ed_PhD, data = df, vcov="hetero")
+
+# reg3 shows that while controlling for education, on average a female will earn approximately $15.8 less than her male counter part, but the difference as per the interaction term will also be added. For instance when a female moves from Associate Degree(occupational/vocational) to a PHD degree,
+#she will on average earn $22 more than her male counterpart (Just the education level change effect due to being a female).
+
+
+```
+
+```{r,echo=FALSE, message=FALSE, warning=FALSE}
+
+#Getting the results of all the regressions together 
+huxreg("reg1, y = wage/hour" = reg1, "reg2, y = wage/hour" =reg2, "reg3, y = wage/hour" =reg3, statistics = c(N="nobs", R2 = "r.squared"),stars = c(`****` = 0.001, `***` = 0.01, `**` = 0.05, `*` = 0.1 ),borders = 0.4, outer_borders = 0.8, number_format = "%.3f", align = ".")
+```
+
