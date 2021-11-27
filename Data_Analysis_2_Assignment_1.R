@@ -60,7 +60,7 @@ ggplot(data = df, aes(x=logw))+
 
 
 
-# Assigning values to grade92 based on the information pr
+# Assigning values to grade92 based on the above information 
 df <- df %>% mutate(ed_AD_V=as.numeric(grade92==41),
                     ed_AD_AP=as.numeric(grade92==42),
                     ed_BD=as.numeric(grade92==43),
@@ -69,6 +69,20 @@ df <- df %>% mutate(ed_AD_V=as.numeric(grade92==41),
                     ed_PhD = as.numeric(grade92==46))
 
 summary(df)
+
+
+
+# Running a non-parametric regression of wagehour on education levels
+ggplot(data = df, aes(x = grade92, y = wagehour )) +
+  geom_smooth( color = "blue", method = "loess", formula = " y ~ x") +
+  geom_point()+
+  labs(title = "Non-parametric regression - wage per hour ~ education")+
+  scale_x_continuous( expand=c(0.1, 0.1),  breaks=seq(41, 46,   by=1), 
+                      labels = c("ed_AD_V","ed_AD_AP","ed_BD","ed_MD","ed_Profess","ed_PhD"))
+
+
+
+
 
 
 
