@@ -82,6 +82,27 @@ ggplot(data = df, aes(x = grade92, y = wagehour )) +
 
 
 
+# Running a level-level regression between wage hour and female
+reg1 <- feols(wagehour ~ female, data = df , vcov="hetero")
+summary(reg1)
+# reg1 1 shows that on average, the female earns approximately $4.3 less than her male counterpart
+
+# Running a level-level regression between wagehour and female with a moderating variable of education
+reg2 <- feols(wagehour ~ female + ed_AD_AP + ed_BD + ed_MD + ed_Profess + ed_PhD, data = df, vcov = "hetero")
+summary(reg2)
+# reg2 shows that after controlling for the education levels, on average a female earns approximately $3.8 less than her male counterpart.
+
+
+# Running a level-level regression between wagehour and female with a moderating variable of education and including interaction terms to control for education levels of both genders.
+reg3 <- feols(wagehour ~ female + ed_AD_AP + ed_BD + ed_MD + ed_Profess + ed_PhD + female*ed_AD_AP + female*ed_BD + female*ed_MD +female*ed_Profess + female*ed_PhD, data = df, vcov="hetero")
+summary(reg3)
+# reg3 shows that while controlling for education, on average a female will earn approximately $15.8 less than her male counter part, but the difference as per the interaction term will also be added. For instance when a female moves from Associate Degree(occupational/vocational) to a PHD degree,
+#she will on average earn $22 more than her male counterpart (Just the education level change effect due to being a female).
+
+
+
+#Getting the results of all the regressions together 
+huxreg("reg1, y = wage/hour" = reg1, "reg2, y = wage/hour" =reg2, "reg3, y = wage/hour" =reg3, statistics = c(N="nobs", R2 = "r.squared"),stars = c(`****` = 0.001, `***` = 0.01, `**` = 0.05, `*` = 0.1 ),borders = 0.4, outer_borders = 0.8, number_format = "%.3f", align = ".")
 
 
 
