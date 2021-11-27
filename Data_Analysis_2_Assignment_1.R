@@ -1,12 +1,11 @@
-
 rm(list = ls())
 
-install.packages("huxtable")
-install.packages("dplyr")
-install.packages("tidyverse")
-install.packages("fixest")
-install.packages("modelsummary")
-install.packages("huxtable")
+#install.packages("huxtable")
+#install.packages("dplyr")
+#install.packages("tidyverse")
+#install.packages("fixest")
+#install.packages("modelsummary")
+#install.packages("huxtable")
 
 
 library(dplyr)
