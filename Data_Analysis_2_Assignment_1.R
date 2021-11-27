@@ -41,5 +41,36 @@ reg0
 
 
 
+# plotting the distribution of wage per hour and log of wage per hour to see if we should run regression with the log of wage/hour or the absolute value of wage/hour.
+ggplot(data = df, aes(x=wagehour))+
+  geom_density()+
+  xlab("log (wage/hour)")
+ggplot(data = df, aes(x=logw))+
+  geom_density()+
+  xlab("log (wage/hour)")
+# Since the distribution of wage per hour is closer to a normal distribution compared to log of wage per hour it makes more sense to use the absolute values rather than the log.
+
+## Assigning degree names to grade92 variable based on the information provided on page 25 of the **[cpsx](https://osf.io/uqe8z/)** document provided.
+- "ed_AD_V contains the individuals with education levels of associate degrees (Vocational/occupational)"
+- "ed_AD_AP contains the individuals with education levels of associate degrees (Academic program)"
+- "ed_BD contains the individuals with education levels of a Bachelor's degree (e.g.BA,AB,BS)"
+- "ed_MD contains the individuals with education levels of a Masters degree (e.g.MA,MS,MEng,Med,MSW,MBA)"
+- "ed_Profess contains the individuals with education of a professional degree (e.g.MD,DDS,DVM,LLB,JD)"
+- "ed_PhD contains the individuals with education levels of a Doctorate degree (e.g.PhD,EdD)"
+
+
+
+# Assigning values to grade92 based on the information pr
+df <- df %>% mutate(ed_AD_V=as.numeric(grade92==41),
+                    ed_AD_AP=as.numeric(grade92==42),
+                    ed_BD=as.numeric(grade92==43),
+                    ed_MD=as.numeric(grade92==44),
+                    ed_Profess = as.numeric(grade92==45),
+                    ed_PhD = as.numeric(grade92==46))
+
+summary(df)
+
+
+
 
 
