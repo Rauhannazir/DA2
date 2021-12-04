@@ -1,0 +1,195 @@
+---
+title: 'Data Analysis 2 : Assignment 2'
+author: "Ali Hasnain Khan Sial (2101874) & Rauhan Nazir (2003231)"
+date: "12/3/2021"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+# CLEAR MEMORY
+rm(list=ls())
+
+# Import libraries
+library(tidyverse)
+library(haven)
+library(data.table)
+library(rms)
+library(lspline)
+library(huxtable)
+library(modelsummary)
+library(pscl)
+library(mfx)
+library(kableExtra)
+```
+
+
+## Overview:
+The goal of this assignment is to establish if there is a correlation between a binary variable, “highly_rated” and other explanatory variables, namely stars, distance, and log of price. The binary variable is designed to take a value of 1 if the rating is greater than 4 and 0 for all other instances. We have used 5 different regression models to try and explain this, however certain models perform better than others as they don’t have limitations that other models do. We have explained this in detail later. Two different datasets were downloaded using OSF hotels-europe containing information about hotel features and prices. A single data table was later acquired by joining them on hotel_id.
+
+## Data Filtering & Adding Lsplines
+We filtered the original data table and focused only on the hotels in Barcelona, having prices less than USD 600 in the month of November for the year 2017. We excluded the weekend and the missing values as well. Table 1 shows the summary of the final data that was used for regressions. Loess for each of the explanatory variables (with highly_rated), allowed us to identify the values we required to add lsplines on, as shown in Exhibit 2. Firstly, for stars, there was no need for it since there was no significant change in the general pattern, while for distance it was added at 1 and 2.5 and for log of price at 4.75
+
+## Estimated Models:
+The 5 models that we used are Linear Probability Model (LPM), Logit, Probit, Logit Marginal Difference and Probit Marginal Difference. LPM model is the most basic one with a major limitation. There is no guarantee that the probability won’t exceed 1, as proven in our case (1.19550).  To overcome this limitation, we incorporated Logit and Probit models. They ensure that the probability is always between 0 and 1, as shown in the S curve in Exhibit 4, however, they only allow us to establish the direction of correlation, not the magnitude. Logit and Probit Marginal difference models allow us to overcome this. Both these models are the ones with the most meaningful interpretations and serve our purpose best. 
+
+## Summary & Interpretations:
+Exhibit 3 shows the results for all the regressions that were run. Both the Logit Marginal Difference and the Probit Marginal Difference models yield on average yield quite identical probabilities, and it was no different for our results. For instance, for the hotels having a log of price less than 4.5, the probability that they are going to be highly rated is 57.1% and 58.3% for Logit Marginal Difference and the Probit Marginal Difference model respectively, being significant at a confidence interval of 99% for both. Likewise, for hotels having a distance of greater than 2.5 miles from the city center, the probability that the hotel is highly rated is 48.3% and 47.6% for Logit Marginal Difference and Probit marginal difference model respectively (While it is significant for Probit at a confidence interval of 95%).  Similar interpretations can be made for other explanatory variables as well.
+
+```{r, include=FALSE}
+# Loading the data
+hotels_europe_price <- read_csv("https://osf.io/p6tyr/download")
+hotels_europe_features <- read_csv("https://osf.io/utwjs/download")
+```
+
+
+```{r, include=FALSE}
+# Joining Price and Features
+# Join them by hotel_id
+data <- left_join(hotels_europe_features, hotels_europe_price, by = "hotel_id")
+rm(hotels_europe_price,hotels_europe_features)
+```
+
+
+```{r, include=FALSE}
+# Selecting a City
+barcelona <- data %>% filter(city_actual=="Barcelona")
+#unique(data$accommodation_type)
+barcelona <- barcelona[barcelona$accommodation_type=="Hotel",]
+#filtering the data
+barcelona <-barcelona %>% filter(price<=600) %>% filter(!is.na(stars)) %>% filter(!is.na(distance)) %>% filter(!is.na(rating))
+#filtering for year, month and day
+barcelona <- barcelona %>% filter(year == '2017') %>% filter(month == '11') %>% filter(weekend == '0')
+```
+
+
+```{r, include=FALSE}
+#checking the skewness of the price 
+ggplot(data = barcelona, aes(x = price)) +
+  geom_density()
+
+#since the price is not normally distributed, therefore taking log to transform it and after log it looks normally distributed
+ggplot(data = barcelona, aes(x = log( price ))) +
+  geom_density()
+
+# LOG transformation of Price
+barcelona$lnprice <- log(barcelona$price)
+
+#adding the binary variable "highly rated"
+barcelona$highly_rated <- ifelse(barcelona$rating>=4, 1, 0)
+```
+
+
+```{r, include=FALSE}
+# adding the 95th percentile
+P95 <- function(x){ quantile(x,.95,na.rm=T)}
+```
+
+## Exhibit 1
+```{r, echo=FALSE}
+# data summary for the finalised dataset
+datasummary( highly_rated + distance + stars + lnprice ~ mean + SD + Min + Max + Median + P95 + N , data = barcelona, title = "Data Summary Table" ) %>% 
+  kableExtra::kable_styling(latex_options = "hold_position")
+```
+
+
+```{r, include=FALSE}
+# checking the loess for each variable in order to decide for lsplines
+ggplot(data= barcelona, aes(y=highly_rated,x= stars))+ geom_smooth(method = "loess", formula = y~x)
+ggplot(data= barcelona, aes(y=highly_rated,x= distance))+ geom_smooth(method = "loess", formula = y~x)
+ggplot(data= barcelona, aes(y=highly_rated,x= lnprice))+ geom_smooth(method = "loess", formula = y~x)
+```
+## Exhibit 2
+```{r, echo=FALSE, figures-side, fig.show="hold", out.width="50%"}
+#displaying the graphs for which the lspline was added
+ggplot(data= barcelona, aes(y=highly_rated,x= distance))+ geom_smooth(method = "loess", formula = y~x) + ggtitle("Highly Rated & Distance")
+ggplot(data= barcelona, aes(y=highly_rated,x= lnprice))+ geom_smooth(method = "loess", formula = y~x) + ggtitle("Highly Rated & Log(Price)")
+```
+
+
+```{r, include = FALSE}
+# creating the linear probability model with binary variable
+lpm <-lm(highly_rated ~ stars + lspline(distance, c(1,2.5)) + lspline(lnprice, c(4.75)), data=barcelona)
+summary(lpm)
+summary(lpm, vcov=sandwich)
+barcelona$pred_lpm <- predict(lpm)
+summary(barcelona$pred_lpm)
+
+#since the maximum probability is higher than 1, it is recommended to take logit and probit to predict the values for the data
+```
+
+
+```{r, include=FALSE}
+# logit coefficients
+logit <- glm(highly_rated ~ stars + lspline(distance, c(1,2.5)) + lspline(lnprice, c(4.75)), data=barcelona, family='binomial'(link = "logit"))
+summary(logit)
+
+# predicted probabilities
+barcelona$pred_logit <- predict.glm(logit, type="response")
+
+# fitted(logit) == data$pred_logit
+summary(barcelona$pred_logit)
+
+# we used logit regression because it restrict the probability values between zero and 1
+
+# logit marginal differences
+logit_marg <- logitmfx(formula = highly_rated ~ stars + lspline(distance, c(1,2.5)) + lspline(lnprice, c(4.75)), data=barcelona, atmean=FALSE)
+
+```
+
+
+```{r, include=FALSE}
+# probit coefficients
+probit <- glm(highly_rated ~ stars + lspline(distance, c(1,2.5)) + lspline(lnprice, c(4.75)), data=barcelona, family=binomial(link="probit"))
+
+# predicted probabilities
+barcelona$pred_probit<- predict.glm(probit, type="response")
+summary(barcelona$pred_probit)
+
+# probit marginal differences
+probit_marg <- probitmfx(formula = highly_rated ~ stars + lspline(distance, c(1,2.5)) + lspline(lnprice, c(4.75)), data=barcelona, atmean=F)
+```
+
+
+## Exhibit 3
+```{r, echo=FALSE}
+cm <- c('(Intercept)' = 'Constant')
+
+msummary(list("lpm" = lpm , "logit" = logit , "logit_marg" = logit_marg , "probit" = probit ,"probit_marg"= probit_marg),
+         fmt="%.3f",
+         gof_omit = 'DF|Deviance|Log.Lik.|F|R2 Adj.|AIC|BIC|R2|PseudoR2',
+         stars=c('*' = .05, '**' = .01),
+         coef_rename =  c("(Intercept)" = "Intercept",
+                   "stars" = "stars",
+                   "lspline(distance, c(1, 2.5))1" = "distance (<1)",
+                  "lspline(distance, c(1, 2.5))2" = "distance (>=1, <2.5)",
+                   "lspline(distance, c(1, 2.5))3" = "distance (>=2.5)",
+                   "lspline(lnprice, c(4.75))1" = "log(price) (<4.5)",
+                   "lspline(lnprice, c(4.75))2" = "log(price) (>=4.5)"),
+         coef_omit = 'as.factor(country)*',
+         title = "Regression Model Summary"
+         
+) %>% 
+  kableExtra::kable_styling(latex_options = "hold_position")
+
+
+```
+
+
+## Exhibit 4
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+g5 <- ggplot(data = barcelona) +
+  geom_point(aes(x=pred_lpm, y=pred_probit, color="Probit"), size=0.5,  shape=16) +
+  geom_point(aes(x=pred_lpm, y=pred_logit,  color="Logit"), size=0.5,  shape=16) +
+  geom_line(aes(x=pred_lpm, y=pred_lpm,    color="45 Degree line"), size=0.5) +
+  labs(x = "Predicted probability of Highly Rated (LPM)", y="Predicted probability")+
+  scale_y_continuous(expand = c(0.00,0.0), limits = c(0,1), breaks = seq(0,1,0.2)) +
+  scale_x_continuous(expand = c(0.00,0.0), limits = c(0,1), breaks = seq(0,1,0.2)) +
+  scale_color_manual(name = "", values=c("#541352FF", "#3a5e8cFF","#10a53dFF")) +
+  theme_light()+
+  theme(legend.position=c(0.55,0.08),
+        legend.direction = "horizontal",
+        legend.text = element_text(size = 7)) +
+  ggtitle("Regression: lpm + probit + logit")
+g5 
+```
+

@@ -5,8 +5,6 @@ rm(list = ls())
 #install.packages("tidyverse")
 #install.packages("fixest")
 #install.packages("modelsummary")
-#install.packages("huxtable")
-
 
 library(dplyr)
 library(tidyverse)
@@ -102,6 +100,9 @@ summary(reg3)
 
 #Getting the results of all the regressions together 
 huxreg("reg1, y = wage/hour" = reg1, "reg2, y = wage/hour" =reg2, "reg3, y = wage/hour" =reg3, statistics = c(N="nobs", R2 = "r.squared"),stars = c(`****` = 0.001, `***` = 0.01, `**` = 0.05, `*` = 0.1 ),borders = 0.4, outer_borders = 0.8, number_format = "%.3f", align = ".")
+
+
+
 
 
 
